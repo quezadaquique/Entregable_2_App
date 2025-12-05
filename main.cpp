@@ -1,8 +1,8 @@
 /*
- * ENTREGABLE 2: App Híbrida (PC y Móvil)
+ * ENTREGABLE 2: Versión FINAL RESTAURADA (GLES 3.0 + Parche Memoria)
  * Autor: Enrique Quezada
- * * COMPILAR CON:
- * emcc main.cpp -o index.html -s USE_GLFW=3 -s USE_WEBGL2=1 -I./imgui/ -I./imgui/backends/ ./imgui/*.cpp ./imgui/backends/imgui_impl_glfw.cpp ./imgui/backends/imgui_impl_opengl3.cpp
+ * * ESTA VERSIÓN FUNCIONA EN PC Y MAC.
+ * * EL TRUCO PARA EL CELULAR ESTÁ EN EL COMANDO DE COMPILACIÓN.
  */
 
 #include <stdio.h>
@@ -13,9 +13,11 @@
 #include <emscripten.h>
 #endif
 
+// --- VOLVEMOS A GLES 3 (MODERNO Y ESTABLE EN PC) ---
 #define GLFW_INCLUDE_ES3
 #include <GLES3/gl3.h>
 #include <GLFW/glfw3.h>
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -40,7 +42,7 @@ float calc_resultado = 0.0f;
 bool calc_mostrar = false;
 char mensaje_error_calc[256] = "";
 
-// Función auxiliar para botones táctiles
+// Funciones Auxiliares
 void ControlTactilInt(const char* label, int* valor, int paso) {
     ImGui::PushID(label);
     if (ImGui::Button("-", ImVec2(40, 40))) *valor -= paso;
@@ -64,21 +66,17 @@ void ControlTactilFloat(const char* label, float* valor, float paso) {
 void dibujar_interfaz() {
     ImGuiIO& io = ImGui::GetIO();
     
-    // --- LÓGICA HÍBRIDA (RESPONSIVE) ---
-    // Si el ancho es menor a 800px, asumimos que es un celular/tablet vertical
+    // RESPONSIVE: Detectar si es celular (< 800px)
     bool es_movil = io.DisplaySize.x < 800.0f; 
 
     if (es_movil) {
-        // MODO MÓVIL: Pantalla Completa
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(io.DisplaySize);
-        // Zoom automático para que se vea bien en celular
-        if (global_scale == 1.0f) global_scale = 1.8f; 
+        if (global_scale == 1.0f) global_scale = 1.6f; // Zoom automático en celular
     } else {
-        // MODO ESCRITORIO: Ventana Centrada y Flotante
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowSize(ImVec2(600, 500), ImGuiCond_FirstUseEver);
-        if (global_scale > 1.2f) global_scale = 1.0f; // Reset zoom en PC
+        if (global_scale > 1.2f) global_scale = 1.0f;
     }
 
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse;
@@ -94,31 +92,26 @@ void dibujar_interfaz() {
     ImGui::Separator();
     
     if (ImGui::TreeNode("Configuración Visual")) {
-        ImGui::SliderFloat("Zoom Interfaz", &global_scale, 0.8f, 3.0f);
-        ImGui::ColorEdit3("Color Fondo", (float*)&clear_color);
+        ImGui::SliderFloat("Zoom", &global_scale, 0.8f, 3.0f);
+        ImGui::ColorEdit3("Fondo", (float*)&clear_color);
         ImGui::TreePop();
     }
     
     ImGui::Spacing();
 
     if (ImGui::BeginTabBar("MenuEjercicios")) {
-        
-        // PESTAÑA 1: LISTAS
         if (ImGui::BeginTabItem("Listas")) {
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Generador de Series");
             ImGui::Separator();
-            
             ControlTactilInt("Inicio", &lista_inicio, 1);
             ControlTactilInt("Fin", &lista_fin, 5);
             ControlTactilInt("Salto", &lista_salto, 1);
 
             ImGui::Spacing();
-
             if (ImGui::Button("GENERAR LISTA", ImVec2(-1, 50))) { 
                 lista_resultado.clear();
                 mensaje_error_lista[0] = '\0';
-
                 if (lista_salto <= 0) sprintf(mensaje_error_lista, "Error: Salto > 0");
                 else if (lista_inicio > lista_fin) sprintf(mensaje_error_lista, "Error: Inicio <= Fin");
                 else {
@@ -126,7 +119,6 @@ void dibujar_interfaz() {
                     lista_generada = true;
                 }
             }
-
             if (mensaje_error_lista[0] != '\0') ImGui::TextColored(ImVec4(1,0,0,1), "%s", mensaje_error_lista);
 
             if (lista_generada) {
@@ -141,12 +133,10 @@ void dibujar_interfaz() {
             ImGui::EndTabItem();
         }
 
-        // PESTAÑA 2: CALCULADORA
         if (ImGui::BeginTabItem("Calculadora")) {
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Operaciones Básicas");
+            ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Operaciones");
             ImGui::Separator();
-
             ControlTactilFloat("Valor 1", &calc_v1, 1.0f);
             ControlTactilFloat("Valor 2", &calc_v2, 1.0f);
 
@@ -159,15 +149,12 @@ void dibujar_interfaz() {
             if(ImGui::Button("DIV", ImVec2(btn_w, 40))) calc_opcion = 3;
             
             ImGui::Spacing();
-            if (ImGui::Button("CALCULAR RESULTADO", ImVec2(-1, 50))) {
+            if (ImGui::Button("CALCULAR", ImVec2(-1, 50))) {
                 switch (calc_opcion) {
                     case 0: calc_resultado = calc_v1 + calc_v2; break;
                     case 1: calc_resultado = calc_v1 - calc_v2; break;
                     case 2: calc_resultado = calc_v1 * calc_v2; break;
-                    case 3: 
-                        if (calc_v2 != 0) calc_resultado = calc_v1 / calc_v2;
-                        else calc_resultado = 0; 
-                        break;
+                    case 3: if (calc_v2 != 0) calc_resultado = calc_v1 / calc_v2; else calc_resultado = 0; break;
                 }
                 calc_mostrar = true;
             }
@@ -203,15 +190,22 @@ void main_loop() {
 
 int main(int, char**) {
     if (!glfwInit()) return 1;
+    
+    // --- RESTAURADO A GLES 3 (Esto funcionaba en PC) ---
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    g_window = glfwCreateWindow(1280, 720, "App Hibrida", NULL, NULL);
+    // Quitamos el CLIENT_API explicito para dejar que Emscripten decida lo mejor
+    
+    g_window = glfwCreateWindow(1280, 720, "Entregable 2", NULL, NULL);
     if (g_window == NULL) return 1;
     glfwMakeContextCurrent(g_window);
+    
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(g_window, true);
+    
+    // RESTAURADO A GLSL 300 ES
     ImGui_ImplOpenGL3_Init("#version 300 es");
 
     #ifdef __EMSCRIPTEN__
